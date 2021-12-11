@@ -1,2 +1,1 @@
-nextcord[speed]
-discord-ui >= 5.1.2
+git+git://github.com/Pycord-Development/pycord.git

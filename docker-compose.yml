@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  discord-bot:
+    container_name: pycord-bot
+    build: ./py_bot
+    volumes:
+      - ./py_bot:/usr/src/app
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    driver: bridge
