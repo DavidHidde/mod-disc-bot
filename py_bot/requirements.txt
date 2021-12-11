@@ -1,0 +1,2 @@
+nextcord[speed]
+discord-ui >= 5.1.2
