@@ -3,10 +3,10 @@ import traceback
 import json
 
 from discord import Bot
-from util import Extension, Cog
+from util import Extension, Cog, AMSQL
 
 logger = logging.getLogger('discord-main')
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Setup the bot classes
 bot = Bot()
@@ -14,13 +14,15 @@ bot = Bot()
 # Load cogs and extensions
 secrets = json.load(open('secrets.json'))
 try:
+    AMSQL.set_settings(secrets.get('mysql'))
+
     for extension in secrets['extensions']:
         bot.load_extension(Extension(**extension).get_path())
 
     for cog in secrets['cogs']:
         parsed_cog = Cog(**cog)
         cog_class = parsed_cog.get_class()
-        bot.add_cog(cog_class(bot, secrets, **parsed_cog.get_options()))
+        bot.add_cog(cog_class(bot, **parsed_cog.get_options()))
 except Exception as err:
     logger.debug(traceback.format_exc())
     logger.error(err)
@@ -37,6 +39,7 @@ async def on_ready():
 async def on_error(event, *args, **kwargs):
     """General error handling"""
     logger.error(f'Error caused by {event}')
+    logger.debug(traceback.format_exc())
 
 
 # Run the bot

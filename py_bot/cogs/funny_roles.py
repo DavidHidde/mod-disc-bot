@@ -1,29 +1,24 @@
 import logging
-import pickle
-
-from os import path
-
 import discord
+import traceback
+
+from util.util_classes import AMSQL
 from discord import Member, Colour, Role
 from discord.ext import commands
 from discord.utils import get
+
 
 
 class FunnyRolesCog(commands.Cog):
     """Cog that allows for letting users add funny roles through commands"""
 
     bot: discord.Bot
-    secrets: dict
     max_roles: int
-    file_name: str
-    user_credit: dict
+    logger: logging.Logger
 
-    def __init__(self, bot, secrets, **options):
+    def __init__(self, bot, **options):
         self.bot = bot
-        self.secrets = secrets
         self.max_roles = options.get('max_roles', 10)
-        self.file_name = options.get('file_name', 'creditstore')
-        self.user_credit = self.load_credit()
         self.logger = logging.getLogger('FunnyRolesCog')
 
         self.logger.info('Initialized funny roles cog')
@@ -33,7 +28,7 @@ class FunnyRolesCog(commands.Cog):
         """Give a role to a user"""
         # Input parsing
         if not role_name or len(role_name) == 0 or role_name == ' ':
-            return await ctx.respond('Missing argument role name')
+            return await ctx.respond('Missing argument: role name')
         role_name = role_name.strip()
 
         # Check if author can give roles
@@ -44,86 +39,175 @@ class FunnyRolesCog(commands.Cog):
         # Check if the role already exists, else create it
         guild = ctx.guild
         role = get(guild.roles, name=role_name)
-        if role in user.roles:
-            return await ctx.respond(f'{user.display_name} already has that role')
-        if not role:
-            role = await guild.create_role(name=role_name, colour=Colour.random())
 
-        # Finally, add the role
         try:
-            await user.add_roles(role)
-            credit = self.user_credit.get(author.id, None)
-            if credit:
-                self.user_credit[author.id].append((role_name, user.id))
-            else:
-                self.user_credit[author.id] = [(role_name, user.id)]
-        except Exception:
-            return await ctx.respond(f"Couldn't give role '{role_name}' to {user.display_name}")
+            with AMSQL.get_conn().cursor() as conn:
+                if not role:
+                    role = await guild.create_role(name=role_name, colour=Colour.random())
+                    query = """
+                        INSERT INTO bot_guild_role (id, name)
+                        VALUES (%s, %s)          
+                    """
+                    conn.execute(query, [role.id, role_name])
 
-        self.save_credit()
-        return await ctx.respond(f"Gave role '{role_name}' to {user.display_name}")
+                if role in user.roles:
+                    return await ctx.respond(f'{user.display_name} already has that role')
+                
+                # Finally, add the role to the user
+                author_member_id = self.select_or_create_member(author)
+                victim_member_id = self.select_or_create_member(user)
+                
+                query = """
+                        INSERT INTO member_bot_guild_role (
+                            author_member_id, 
+                            victim_member_id, 
+                            role_id
+                        ) VALUES (%s, %s, %s)          
+                    """
+                conn.execute(query, [author_member_id, victim_member_id, role.id])
+
+                await user.add_roles(role)
+                AMSQL.get_conn().commit()
+                return await ctx.respond(f"Gave role '{role_name}' to {user.display_name}")
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.debug(traceback.format_exc())
+            return await ctx.respond(f"Something went wrong while trying to give a role")
 
     @commands.slash_command(name="remove_role")
     async def remove_role(self, ctx, user: Member, role: Role):
-        """Remove a role given by a user"""
+        """Remove a role you have given to a user"""
         # Input parsing
+        if not user:
+            return await ctx.respond('Missing argument: user')
         if not role:
-            return await ctx.respond('Missing argument role name')
+            return await ctx.respond('Missing argument: role name')
 
         # Check if the author gave that role to the target
         author = ctx.author
-        user_credit = self.user_credit.get(author.id)
-        if not user_credit or (role.name, user.id) not in user_credit:
-            return await ctx.respond(f"You didn't give {user.display_name} that role")
-
-        # Remove role
         try:
-            await user.remove_roles(role)
-            user_credit.remove((role.name, user.id))
-            if not role.members:
-                await role.delete()
-            self.user_credit[author.id] = user_credit
-        except Exception:
-            return await ctx.respond(f"Couldn't remove role '{role.name}' from {user.display_name}")
+            with AMSQL.get_conn().cursor() as conn:
+                query = """
+                    SELECT mbgr.id
+                    FROM 
+                        member_bot_guild_role mbgr
+                        JOIN discord_member adm ON mbgr.author_member_id = adm.id
+                        JOIN discord_member vdm ON mbgr.victim_member_id = vdm.id
+                    WHERE 
+                        mbgr.role_id = %s AND
+                        adm.user_id = %s AND    
+                        vdm.user_id = %s           
+                """
+                conn.execute(query, [role.id, author.id, user.id])
 
-        self.save_credit()
-        return await ctx.respond(f"Removed role '{role.name}' from {user.display_name}")
+                result = conn.fetchone()
+                if not (result):
+                    return await ctx.respond(f"You didn't give {user.display_name} that role")
+
+                (relation_id, ) = result
+
+                # Remove role from the user
+                query = """
+                    DELETE
+                    FROM member_bot_guild_role mbgr
+                    WHERE mbgr.id = %s         
+                """
+                conn.execute(query, [relation_id])
+                await user.remove_roles(role)
+
+                # Remove unused roles
+                if not role.members:
+                    query = """
+                        DELETE
+                        FROM bot_guild_role bgr
+                        WHERE bgr.id = %s         
+                    """
+                    conn.execute(query, [role.id])
+                    await role.delete()
+
+                AMSQL.get_conn().commit()
+                return await ctx.respond(f"Removed role '{role.name}' from {user.display_name}")
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.debug(traceback.format_exc())
+            return await ctx.respond(f"Something went wrong while trying to remove a role")
 
     @commands.slash_command(name="role_credit")
     async def role_credit(self, ctx):
         """Check how many roles you can still give away"""
-        if not self.user_credit:
-            return await ctx.respond('No roles have been given away yet')
+        try:
+            with AMSQL.get_conn().cursor() as conn:
+                author = ctx.author
+                query = """
+                    SELECT vdm.user_id, bgr.name
+                    FROM 
+                        bot_guild_role bgr
+                        JOIN discord_member adm ON adm.user_id = %s
+                        JOIN member_bot_guild_role mbgr ON mbgr.author_member_id = adm.id
+                        JOIN discord_member vdm ON vdm.id = mbgr.victim_member_id
+                """
+                conn.execute(query, [author.id])
 
-        author = ctx.author
-        role_list = self.user_credit.get(author.id)
-        count = len(role_list) if role_list else 0
-        if count == 0:
-            return await ctx.respond('You have not given away any role yet')
+                role_list = conn.fetchall()
+                count = len(role_list) if role_list else 0
+                if count == 0:
+                    return await ctx.respond('You have not given away any role yet')
 
-        # Display roles in a nice manner
-        message = f'You have given away {count} roles:\n\n'
-        for role, target in role_list:
-            user = await self.bot.fetch_user(target)
-            message += f" - '{role}' to {user.display_name}\n"
-        return await ctx.respond(message + f'\nYou can still give away {self.max_roles - count} roles\n')
+                # Display roles in a nice manner
+                message = f'You have given away {count} roles:\n\n'
+                for victim_id, role in role_list:
+                    user = await self.bot.fetch_user(victim_id)
+                    message += f" - '{role}' to {user.display_name}\n"
+                return await ctx.respond(message + f'\nYou can still give away {self.max_roles - count} roles\n')
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.debug(traceback.format_exc())
+            return await ctx.respond(f"Something went wrong while checking role credit")
 
-    def save_credit(self):
-        """Save user_credit[] in file_name"""
-        with open(self.file_name, 'wb') as credit_file:
-            pickle.dump(self.user_credit, credit_file)
-        self.logger.debug('Saved credits in file')
-
-    def load_credit(self):
-        """Load user_credit[] from file_name if it exists"""
-        if path.exists(self.file_name):
-            with open(self.file_name, 'rb') as credit_file:
-                return pickle.load(credit_file)
-        else:
-            self.logger.debug('No credits file found')
-            return {}
-
-    def check_credit(self, user_id):
+    def check_credit(self, user_id: int):
         """Check if the user is at max credit"""
-        role_list = self.user_credit.get(user_id)
-        return role_list is not None and len(role_list) >= self.max_roles
+        with AMSQL.get_conn().cursor() as conn:
+            query = """
+                SELECT COUNT(*)
+                FROM member_bot_guild_role
+                WHERE author_member_id = %s
+            """
+            conn.execute(query, [user_id])
+
+            result = conn.fetchone()
+            return not result or result[0] >= self.max_roles
+
+    def select_or_create_member(self, member: Member):
+        """Select or create a discord member in the DB. Return the ID"""
+        with AMSQL.get_conn().cursor() as conn:
+            query = """
+                SELECT dm.id
+                FROM discord_member dm
+                WHERE dm.user_id = %s    
+            """
+            conn.execute(query, [member.id])
+            result = conn.fetchone()
+
+            if not result:
+                query = """
+                    INSERT INTO discord_member (
+                        guild_id,
+                        user_id,
+                        name,
+                        discriminator,
+                        is_bot
+                    ) VALUES (%s, %s, %s, %s, %s)          
+                """
+                conn.execute(query, [
+                    member.guild.id,
+                    member.id,
+                    member.name,
+                    member.discriminator,
+                    member.bot
+                ])
+                member_id = conn.lastrowid
+            else:
+                (member_id, ) = result
+
+            return member_id
+

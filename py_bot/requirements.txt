@@ -1,1 +1,2 @@
 git+git://github.com/Pycord-Development/pycord.git
+mysql-connector-python

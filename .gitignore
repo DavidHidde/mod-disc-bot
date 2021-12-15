@@ -132,3 +132,4 @@ dmypy.json
 secrets.json
 .idea
 creditstore
+mysql.env
