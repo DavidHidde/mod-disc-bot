@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   discord-bot:
-    container_name: pycord-bot
+    container_name: discord-bot
     build: ./py_bot
     restart: always
     networks:

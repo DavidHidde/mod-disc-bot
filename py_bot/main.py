@@ -1,33 +1,44 @@
 import logging
 import traceback
 import json
+import discord
+import asyncio
 
-from discord import Bot
+from discord.ext.commands import Bot
 from util import Extension, Cog, AMSQL
 
 logger = logging.getLogger('discord-main')
 logging.basicConfig(level=logging.INFO)
 
-# Setup the bot classes
-bot = Bot()
+# Setup the bot class
+bot = Bot('!/', intents=discord.Intents.default())
 
-# Load cogs and extensions
-secrets = json.load(open('secrets.json'))
-try:
-    AMSQL.set_settings(secrets.get('mysql'))
 
-    for extension in secrets['extensions']:
-        bot.load_extension(Extension(**extension).get_path())
+# Add cogs/extensions and start bot with token
+async def main():
+    async with bot:
+        secrets = json.load(open('secrets.json'))
 
-    for cog in secrets['cogs']:
-        parsed_cog = Cog(**cog)
-        cog_class = parsed_cog.get_class()
-        bot.add_cog(cog_class(bot, **parsed_cog.get_options()))
-except Exception as err:
-    logger.debug(traceback.format_exc())
-    logger.error(err)
-    logger.error('Something went wrong while loading cogs/extensions. aborting...')
-    exit(0)
+        # Setup MYSLQ, load cogs and extensions
+        try:
+            AMSQL.set_settings(secrets.get('mysql'))
+
+            for extension in secrets['extensions']:
+                await bot.load_extension(Extension(**extension).get_path())
+
+            for cog in secrets['cogs']:
+                parsed_cog = Cog(**cog)
+                cog_class = parsed_cog.get_class()
+                await bot.add_cog(cog_class(bot, **parsed_cog.get_options()))
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+            logger.error('Something went wrong while loading cogs/extensions. aborting...')
+            exit(0)
+
+        # Start the bot
+        await bot.start(secrets['token'])
 
 
 @bot.event
@@ -41,6 +52,4 @@ async def on_error(event, *args, **kwargs):
     logger.error(f'Error caused by {event}')
     logger.debug(traceback.format_exc())
 
-
-# Run the bot
-bot.run(secrets['token'])
+asyncio.run(main())

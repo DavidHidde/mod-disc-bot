@@ -1,2 +1,2 @@
-git+git://github.com/Pycord-Development/pycord.git
+git+https://github.com/Rapptz/discord.py@master
 mysql-connector-python
