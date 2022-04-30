@@ -1,5 +1,4 @@
 import importlib
-import logging
 import mysql.connector
 
 from dataclasses import dataclass
@@ -25,7 +24,7 @@ class Cog:
 
     def get_class(self):
         """Dynamically load the cog class"""
-        module_name = '.'.join([self.COG_PATH, self.file_name])
+        module_name = '.'.join([self.COG_PATH, self.file_name, self.file_name])
         module = importlib.import_module(module_name)
         return getattr(module, self.cog_class)
     
@@ -50,7 +49,7 @@ class Extension:
 
     def get_path(self):
         """Get the loadable extension path"""
-        return '.'.join([self.EXTENSION_PATH, self.file_name])
+        return '.'.join([self.EXTENSION_PATH, self.file_name, self.file_name])
 
 
 class AMSQL:

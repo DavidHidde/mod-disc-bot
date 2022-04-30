@@ -15,7 +15,7 @@ class FunnyRolesCog(Cog):
     max_roles: int
     logger: logging.Logger
 
-    def __init__(self, bot, **options):
+    def __init__(self, bot: discord.ext.commands.Bot, **options):
         self.bot = bot
         self.max_roles = options.get('max_roles', 10)
         self.logger = logging.getLogger('FunnyRolesCog')
@@ -23,17 +23,19 @@ class FunnyRolesCog(Cog):
         self.logger.info('Initialized funny roles cog')
 
     @app_commands.command()
-    async def give_role(self, ctx, user: Member, role_name: str):
+    @app_commands.guilds(308355983745220619)
+    async def give_role(self, ctx: discord.Interaction, user: Member, role_name: str):
         """Give a role to a user"""
         # Input parsing
         if not role_name or len(role_name) == 0 or role_name == ' ':
             return await ctx.response.send_message(content='Missing argument: role name')
         role_name = role_name.strip()
 
+        await ctx.response.defer()
         # Check if author can give roles
         author = ctx.user
         if self.check_credit(author.id):
-            return await ctx.response.send_message(response='You have no role credit left')
+            return await ctx.followup.send(response='You have no role credit left')
 
         # Check if the role already exists, else create it
         guild = ctx.guild
@@ -50,7 +52,7 @@ class FunnyRolesCog(Cog):
                     conn.execute(query, [role.id, role_name])
 
                 if role in user.roles:
-                    return await ctx.response.send_message(content=f'{user.display_name} already has that role')
+                    return await ctx.followup.send(content=f'{user.display_name} already has that role')
                 
                 # Finally, add the role to the user
                 author_member_id = self.select_or_create_member(author)
@@ -67,14 +69,15 @@ class FunnyRolesCog(Cog):
 
                 await user.add_roles(role)
                 AMSQL.get_conn().commit()
-                return await ctx.response.send_message(content=f"Gave role '{role_name}' to {user.display_name}")
+                return await ctx.followup.send(content=f"Gave role '{role_name}' to {user.display_name}")
         except Exception as e:
             self.logger.error(e)
             self.logger.debug(traceback.format_exc())
-            return await ctx.response.send_message(content=f"Something went wrong while trying to give a role")
+            return await ctx.followup.send(content=f"Something went wrong while trying to give a role")
 
     @app_commands.command()
-    async def remove_role(self, ctx, user: Member, role: Role):
+    @app_commands.guilds(308355983745220619)
+    async def remove_role(self, ctx: discord.Interaction, user: Member, role: Role):
         """Remove a role you have given to a user"""
         # Input parsing
         if not user:
@@ -82,6 +85,7 @@ class FunnyRolesCog(Cog):
         if not role:
             return await ctx.response.send_message(content='Missing argument: role name')
 
+        await ctx.response.defer()
         # Check if the author gave that role to the target
         author = ctx.user
         try:
@@ -100,8 +104,8 @@ class FunnyRolesCog(Cog):
                 conn.execute(query, [role.id, author.id, user.id])
 
                 result = conn.fetchone()
-                if not (result):
-                    return await ctx.response.send_message(content=f"You didn't give {user.display_name} that role")
+                if not result:
+                    return await ctx.followup.send(content=f"You didn't give {user.display_name} that role")
 
                 (relation_id, ) = result
 
@@ -125,43 +129,45 @@ class FunnyRolesCog(Cog):
                     await role.delete()
 
                 AMSQL.get_conn().commit()
-                return await ctx.response.send_message(content=f"Removed role '{role.name}' from {user.display_name}")
+                return await ctx.followup.send(content=f"Removed role '{role.name}' from {user.display_name}")
         except Exception as e:
             self.logger.error(e)
             self.logger.debug(traceback.format_exc())
-            return await ctx.response.send_message(content=f"Something went wrong while trying to remove a role")
+            return await ctx.followup.send(content=f"Something went wrong while trying to remove a role")
 
     @app_commands.command()
-    async def role_credit(self, ctx):
+    @app_commands.guilds(308355983745220619)
+    async def role_credit(self, ctx: discord.Interaction):
         """Check how many roles you can still give away"""
+        await ctx.response.defer()
         try:
             with AMSQL.get_conn().cursor() as conn:
-                author = ctx.user
                 query = """
                     SELECT vdm.user_id, bgr.name
-                    FROM 
-                        bot_guild_role bgr
-                        JOIN discord_member adm ON adm.user_id = %s
-                        JOIN member_bot_guild_role mbgr ON mbgr.author_member_id = adm.id
-                        JOIN discord_member vdm ON vdm.id = mbgr.victim_member_id
+                    FROM discord_member adm
+                    JOIN member_bot_guild_role mbgr ON mbgr.author_member_id = adm.id
+                    JOIN discord_member vdm ON vdm.id = mbgr.victim_member_id
+                    JOIN bot_guild_role bgr ON mbgr.role_id = bgr.id
+                    WHERE adm.user_id = %s
                 """
-                conn.execute(query, [author.id])
+                conn.execute(query, [ctx.user.id])
 
                 role_list = conn.fetchall()
                 count = len(role_list) if role_list else 0
                 if count == 0:
-                    return await ctx.response.send_message(content='You have not given away any role yet')
+                    return await ctx.followup.send(content='You have not given away any role yet')
 
                 # Display roles in a nice manner
                 message = f'You have given away {count} roles:\n\n'
                 for victim_id, role in role_list:
                     user = await self.bot.fetch_user(victim_id)
                     message += f" - '{role}' to {user.display_name}\n"
-                return await ctx.response.send_message(content=message + f'\nYou can still give away {self.max_roles - count} roles\n')
+
+                return await ctx.followup.send(content=message + f'\nYou can still give away {self.max_roles - count} roles\n')
         except Exception as e:
             self.logger.error(e)
             self.logger.debug(traceback.format_exc())
-            return await ctx.response.send_message(content=f"Something went wrong while checking role credit")
+            return await ctx.followup.send(content=f"Something went wrong while checking role credit")
 
     def check_credit(self, user_id: int):
         """Check if the user is at max credit"""

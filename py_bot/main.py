@@ -43,6 +43,21 @@ async def main():
 
 @bot.event
 async def on_ready():
+    try:
+        command_tree = bot.tree
+
+        for guild in bot.guilds:
+            if guild is not None:
+                logging.info(f"Syncing commands to guild {guild.name}")
+                await command_tree.sync(guild=guild)
+
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(err)
+        logger.error('Something went wrong while syncing commands. Aborting...')
+        await bot.close()
+        exit(0)
+    
     logger.info('Bot ready to go')
 
 
