@@ -1,29 +1,23 @@
-import logging
 import discord
 import traceback
 
 from util.util_classes import AMSQL
+from cogs import CommandCog
 from discord import Member, Colour, Role, app_commands
-from discord.ext.commands import Cog
+from discord.ext.commands import Bot
 from discord.utils import get
 
 
-class FunnyRolesCog(Cog):
+class FunnyRolesCog(CommandCog):
     """Cog that allows for letting users add funny roles through commands"""
 
-    bot: discord.ext.commands.Bot
     max_roles: int
-    logger: logging.Logger
 
-    def __init__(self, bot: discord.ext.commands.Bot, **options):
-        self.bot = bot
+    def __init__(self, bot: Bot, **options):
         self.max_roles = options.get('max_roles', 10)
-        self.logger = logging.getLogger('FunnyRolesCog')
-
-        self.logger.info('Initialized funny roles cog')
+        super().__init__(bot, **options)
 
     @app_commands.command()
-    @app_commands.guilds(308355983745220619)
     async def give_role(self, ctx: discord.Interaction, user: Member, role_name: str):
         """Give a role to a user"""
         # Input parsing
@@ -71,12 +65,11 @@ class FunnyRolesCog(Cog):
                 AMSQL.get_conn().commit()
                 return await ctx.followup.send(content=f"Gave role '{role_name}' to {user.display_name}")
         except Exception as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+            self._logger.error(e)
+            self._logger.debug(traceback.format_exc())
             return await ctx.followup.send(content=f"Something went wrong while trying to give a role")
 
     @app_commands.command()
-    @app_commands.guilds(308355983745220619)
     async def remove_role(self, ctx: discord.Interaction, user: Member, role: Role):
         """Remove a role you have given to a user"""
         # Input parsing
@@ -131,12 +124,11 @@ class FunnyRolesCog(Cog):
                 AMSQL.get_conn().commit()
                 return await ctx.followup.send(content=f"Removed role '{role.name}' from {user.display_name}")
         except Exception as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+            self._logger.error(e)
+            self._logger.debug(traceback.format_exc())
             return await ctx.followup.send(content=f"Something went wrong while trying to remove a role")
 
     @app_commands.command()
-    @app_commands.guilds(308355983745220619)
     async def role_credit(self, ctx: discord.Interaction):
         """Check how many roles you can still give away"""
         await ctx.response.defer()
@@ -160,13 +152,13 @@ class FunnyRolesCog(Cog):
                 # Display roles in a nice manner
                 message = f'You have given away {count} roles:\n\n'
                 for victim_id, role in role_list:
-                    user = await self.bot.fetch_user(victim_id)
+                    user = await self._bot.fetch_user(victim_id)
                     message += f" - '{role}' to {user.display_name}\n"
 
                 return await ctx.followup.send(content=message + f'\nYou can still give away {self.max_roles - count} roles\n')
         except Exception as e:
-            self.logger.error(e)
-            self.logger.debug(traceback.format_exc())
+            self._logger.error(e)
+            self._logger.debug(traceback.format_exc())
             return await ctx.followup.send(content=f"Something went wrong while checking role credit")
 
     def check_credit(self, user_id: int):

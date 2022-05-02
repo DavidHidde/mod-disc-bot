@@ -10,7 +10,7 @@ class Cog:
     file_name: str
     cog_class: str
     options: dict
-    
+
     COG_PATH: str = 'cogs'
 
     def __init__(self, **kwargs):
@@ -21,13 +21,11 @@ class Cog:
         if not self.file_name or not self.cog_class:
             raise IOError('Cog has no name/class')
 
-
     def get_class(self):
         """Dynamically load the cog class"""
         module_name = '.'.join([self.COG_PATH, self.file_name, self.file_name])
         module = importlib.import_module(module_name)
         return getattr(module, self.cog_class)
-    
 
     def get_options(self):
         return self.options
@@ -42,10 +40,9 @@ class Extension:
 
     def __init__(self, **kwargs):
         self.file_name = kwargs.get('name')
-        
+
         if not self.file_name:
             raise IOError('Extensions has no name')
-
 
     def get_path(self):
         """Get the loadable extension path"""

@@ -19,7 +19,7 @@ async def main():
     async with bot:
         secrets = json.load(open('secrets.json'))
 
-        # Setup MYSLQ, load cogs and extensions
+        # Setup MYSQL, load cogs and extensions
         try:
             AMSQL.set_settings(secrets.get('mysql'))
 
@@ -43,12 +43,15 @@ async def main():
 
 @bot.event
 async def on_ready():
+    # Update commands to be guild specific and sync them to guilds
     try:
         command_tree = bot.tree
+        guilds = bot.guilds
 
-        for guild in bot.guilds:
+        for guild in guilds:
             if guild is not None:
                 logging.info(f"Syncing commands to guild {guild.name}")
+                command_tree.copy_global_to(guild=guild)
                 await command_tree.sync(guild=guild)
 
     except Exception as err:

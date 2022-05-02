@@ -5,6 +5,8 @@ services:
     container_name: discord-bot
     build: ./py_bot
     restart: always
+    volumes:
+      - ./assets:/usr/assets/
     networks:
       - bot-network
     
