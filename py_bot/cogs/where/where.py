@@ -18,17 +18,14 @@ class WhereCog(CommandCog):
     images: list
 
     def __init__(self, bot: Bot, **options):
-        self.parse_images(bot)
+        self.parse_images()
         super().__init__(bot, **options)
 
-    def parse_images(self, bot: Bot):
+    def parse_images(self):
         """Pre-process images in the given directory"""
         try:
             with open(os.path.join(self.ASSETS_PATH, 'metadata.json')) as f:
                 self.images = json.load(f)
-
-            command_tree = bot.tree
-
             return True
 
         except Exception as e:
@@ -82,7 +79,7 @@ class WhereCog(CommandCog):
             return await ctx.response.send_message(content='Only the bot owner is allowed to do this ^^')
 
         await ctx.response.defer()
-        if self.parse_images(self._bot):
+        if self.parse_images():
             return await ctx.followup.send(content='Updated funny images')
 
         return await ctx.followup.send(content='Failed to update funny images :(')
