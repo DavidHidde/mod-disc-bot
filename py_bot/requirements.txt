@@ -1,2 +1,4 @@
-git+git://github.com/Pycord-Development/pycord.git
+discord.py
 mysql-connector-python
+Pillow
+aiohttp

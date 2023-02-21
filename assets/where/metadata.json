@@ -1,0 +1,41 @@
+[
+    {
+        "image": "monke.jpg",
+        "prefix": "where ",
+        "suffix": "",
+        "top_left_box": [461, 22],
+        "bottom_right_box": [717, 65],
+        "color": "#000000",
+        "style": "lowercase"
+    },
+    {
+        "image": "coordinator.jpg",
+        "font": "arial.ttf",
+        "prefix": "WHERE ",
+        "suffix": "",
+        "top_left_box": [69, 6],
+        "bottom_right_box": [276, 34],
+        "color": "#f98a6a",
+        "style": "uppercase"
+    },
+    {
+        "image": "milk.jpg",
+        "font": "impact.ttf",
+        "prefix": "",
+        "suffix": "",
+        "top_left_box": [128, 230],
+        "bottom_right_box": [322, 320],
+        "color": "#000000",
+        "style": "uppercase"
+    },
+    {
+        "image": "dll.jpg",
+        "font": "arial.ttf",
+        "prefix": "",
+        "suffix": "",
+        "top_left_box": [254, 57],
+        "bottom_right_box": [293, 69],
+        "color": "#000000",
+        "style": "mixed"
+    }
+]
