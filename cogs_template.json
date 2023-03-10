@@ -1,0 +1,5 @@
+{
+  "cog_collection": "relative_cog_directory",
+  "mdb_commands": "mod-disc-bot-features/commands",
+  "mdb_extensions": "mod-disc-bot-features/extensions"
+}
