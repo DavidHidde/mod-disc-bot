@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  mysql-db:
+    image: mysql:8.0.27
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    volumes:
+      - mysqldata:/var/lib/mysql
+    networks:
+      - bot-network
+    env_file:
+      - mysql.env
+
+  adminer-mysql:
+    image: adminer
+    container_name: adminer
+    restart: always
+    networks:
+      - bot-network
+    ports:
+      - 8080:8080
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  mysqldata:
+    driver: local

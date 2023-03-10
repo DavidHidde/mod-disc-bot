@@ -7,8 +7,6 @@ services:
     restart: always
     volumes:
       - ./assets:/usr/assets/
-      - ./cogs:/usr/src/app/cogs
-      - ./cogs.json:/usr/src/app/cogs.json
       - ./configuration.json:/usr/src/app/configuration.json
     networks:
       - bot-network # Network to connect to if you want to communicate to other containers in a cog
