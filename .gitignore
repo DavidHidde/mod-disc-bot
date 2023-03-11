@@ -7,8 +7,8 @@ assets/*
 !assets/README.md
 
 # Cogs
-app/cogs/*
-!app/cogs/README.md
+cogs/*
+!cogs/README.md
 
 ### PYTHON STUFF ###
 # Byte-compiled / optimized / DLL files

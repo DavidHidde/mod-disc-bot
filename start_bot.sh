@@ -20,7 +20,7 @@ while IFS= read -r ROOT_DIR; do
         SUBSTR="\"name\": \"$COG_DIR\""
 
         if [[ "$ENABLED_COGS" == *"$SUBSTR"* ]] && [ -d "$DOCKER_DIR" ]; then
-            DOCKER_FILE=$(find $DOCKER_DIR -iname "*.override.yml" -o -iname "*.override.yaml")
+            DOCKER_FILE=$(find $DOCKER_DIR -iname "docker-compose.yml" -o -iname "docker-compose.yaml")
             docker compose -f $DOCKER_FILE up -d
         fi
     done <<< "$COG_DIRS"

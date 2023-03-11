@@ -3,11 +3,13 @@ version: "3.8"
 services:
   discord-bot:
     container_name: discord-bot
-    build: app
+    build: .
     restart: always
     volumes:
       - ./assets:/usr/assets/
       - ./configuration.json:/usr/src/app/configuration.json
+      - ./cogs.json:/usr/src/app/cogs.json
+      - ./cogs:/usr/src/app/cogs
     networks:
       - bot-network # Network to connect to if you want to communicate to other containers in a cog
 
