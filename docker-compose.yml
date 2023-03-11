@@ -2,37 +2,17 @@ version: "3.8"
 
 services:
   discord-bot:
-    container_name: pycord-bot
-    build: ./py_bot
-    restart: always
-    networks:
-      - bot-network
-    
-  mysql-db:
-    image: mysql:8.0.27
-    container_name: mysql
-    command: --default-authentication-plugin=mysql_native_password
+    container_name: discord-bot
+    build: .
     restart: always
     volumes:
-      - mysqldata:/var/lib/mysql
+      - ./assets:/usr/assets/
+      - ./configuration.json:/usr/src/app/configuration.json
+      - ./cogs.json:/usr/src/app/cogs.json
+      - ./cogs:/usr/src/app/cogs
     networks:
-      - bot-network
-    env_file:
-      - ./mysql.env
-  
-  adminer-mysql:
-    image: adminer
-    container_name: adminer
-    restart: always
-    networks:
-      - bot-network
-    ports:
-      - 8080:8080
+      - bot-network # Network to connect to if you want to communicate to other containers in a cog
 
 networks:
   bot-network:
     driver: bridge
-
-volumes:
-  mysqldata:
-    driver: local

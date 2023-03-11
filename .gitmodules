@@ -1,0 +1,3 @@
+[submodule "cogs/mod-disc-bot-features"]
+	path = cogs/mod-disc-bot-features
+	url = git@github.com:DavidHidde/mod-disc-bot-features.git
