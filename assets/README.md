@@ -1,0 +1,1 @@
+This directory is bind mounted and can be used to dynamically adjust cog resources.
