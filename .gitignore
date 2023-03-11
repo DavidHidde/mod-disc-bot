@@ -6,10 +6,6 @@ configuration.json
 assets/*
 !assets/README.md
 
-# Cogs
-cogs/*
-!cogs/README.md
-
 ### PYTHON STUFF ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
